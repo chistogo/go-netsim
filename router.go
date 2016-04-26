@@ -59,70 +59,61 @@ func main(){
    clear()
    println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
    
+   //Read in JSON file to create the router Struct
    data, err := ioutil.ReadFile("routerinfo.json")
    checkError(err)
-   var testRouter Router
    
+   //Create Router Struct and turn json into Struct
+   var testRouter Router
    err = json.Unmarshal(data,&testRouter)
    checkError(err)
-    /*
-        testRouter := Router {
-            IP: "192.168.1.1",
-            Port: 1232,
-            Neighbours: []Neighbour{
-                
-                Neighbour {
-                IP: "192.168.1.2",
-                Port: 1233,
-                Weight:1},
-                
-                Neighbour {
-                IP: "192.168.1.3",
-                Port: 1234,
-                Weight:2},
-                
-                Neighbour {
-                IP: "192.168.1.5",
-                Port: 1235,
-                Weight:3},
-                
-                },
-                
-          }//end of struct Declaration
-          */
-          go listenForRouter(testRouter)
+    
+    //Create a Go Routine that listens for other routers that are trying to comunicate
+    go listenForRouter(testRouter)
+
+    //Turn our Router to json , this was for testing
+    //b, _ := json.Marshal(testRouter);
+    // s := string(b)
+    
+    //fmt.Println(s)
+    
+    //Create Graph undirected weighted graph to represent the current network
+    tree := graph.New(graph.Undirected)
+    nodes := make(map[string]graph.Node, 0)
+    nodeWeIs := testRouter.IP + ":" + strconv.Itoa(testRouter.Port)
+    nodes[nodeWeIs] = tree.MakeNode()
+    
+    //Interate through the nodes in the router(the one read from json) and add them to the graph
+    for i := 0; i < len(testRouter.Neighbours); i++ {
         
-           b, _ := json.Marshal(testRouter);
-           s := string(b)
-           
-           //fmt.Println(s)
-           
-           tree := graph.New(graph.Undirected)
-           nodes := make(map[string]graph.Node, 0)
-           nodeWeIs := testRouter.IP + ":" + strconv.Itoa(testRouter.Port)
-           nodes[nodeWeIs] = tree.MakeNode()
-           for i := 0; i < len(testRouter.Neighbours); i++ {
-               
-               currentProcessingNode := testRouter.Neighbours[i].IP + ":" + strconv.Itoa(testRouter.Neighbours[i].Port)
-               nodes[currentProcessingNode] = tree.MakeNode()
-               tree.MakeEdgeWeight(nodes[nodeWeIs], nodes[currentProcessingNode], testRouter.Neighbours[i].Weight)
-               
-           }
-           
-           for key, node := range nodes {
-                *node.Value = key
-            }
-           
-           mst := tree.DijkstraSearch(nodes[nodeWeIs])
-           
-           b, _ = json.Marshal(mst);
-           s = string(b)
-           
-           fmt.Println(s)
-           boot(testRouter)
-           for true {
-               
-           }
+        currentProcessingNode := testRouter.Neighbours[i].IP + ":" + strconv.Itoa(testRouter.Neighbours[i].Port)
+        nodes[currentProcessingNode] = tree.MakeNode()
+        tree.MakeEdgeWeight(nodes[nodeWeIs], nodes[currentProcessingNode], testRouter.Neighbours[i].Weight)
+        
+    }
+    //Set values of all nodes to key???????? Clarification needed.
+    for key, node := range nodes {
+        *node.Value = key
+    }
+    
+    //Test to find the minimum spanning tree.
+    mst := tree.DijkstraSearch(nodes[nodeWeIs])
+    
+    //Turn that tree to json for sending
+    b, _ = json.Marshal(mst);
+    s = string(b)
+    //Print out the json for testing
+    fmt.Println(s)
+    
+    
+    //This function trys to initiates connection to the other routers and updates the tree if they are connected
+    boot(testRouter)
+    
+    //inifinate loop to keep the program running while the go routines do their thing
+    for true {
+        
+    }
+    
     }
  func boot(myRouter Router) {
      // for node in neighbors
@@ -139,18 +130,28 @@ func main(){
  }
 
 
+
+
+
+//Makes strings more gophery
 func println(dis string) {
     dis = "ʕ◔ϖ◔ʔ " + dis + " ʕ◔ϖ◔ʔ"
     fmt.Println(dis)
 }
 
-//General Error Catching 
+
+
+
+//General Error Catching
 func checkError(err error)  {
     if err != nil {
         log.Fatal(err)
     }
 }
 
+
+
+//All this function does is executes the clear command.
 func clear(){
 
 	cmd := exec.Command("clear")
