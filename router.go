@@ -33,64 +33,46 @@ type Router struct{
 }
 
 
-type Connection struct{
-    Weight int
-    Ip string
-}
 
+//Vertices
 type Host struct{
-    Host string
-    Connections []Connection
+    Connections map[string]int
 }
 
-
+//Graph
 type NetworkGraph struct{
-    Hosts []Host
+    Hosts map[string]*Host
 }
 
 
-func createConnection(weight int,ip string) *Connection{
-    conn := Connection{
-        Ip : ip,
-        Weight : weight,
-    }
-    
-    return &conn
-}
 
 
-func (conn *Host) addHost(ip string, weight int){
-    newConn := Connection{
-        Ip : ip,
-        Weight: weight,
-    }
-    conn.Connections = append(conn.Connections,newConn)
+func (host *Host) addConnection(ip string, weight int){
+    host.Connections[ip]=weight
 }
 
 func (graph *NetworkGraph) addHost(newHost string){
     myHost := Host{
-        Host : newHost,
+        
     }
-    graph.Hosts = append(graph.Hosts,myHost)
+    
+    graph.Hosts[newHost] = &myHost
+    graph.Hosts[newHost].Connections = make(map[string]int)
 }
 
 func createGraph() *NetworkGraph  {
     myGraph := NetworkGraph{
-        Hosts : []Host{
-            
-        },
+       
     }
-    
+    myGraph.Hosts = make(map[string]*Host)
     return &myGraph
 }
 
 func (graph *NetworkGraph) getHost(host string)*Host{
-   for i := 0; i < len(graph.Hosts); i++ {
-       if(graph.Hosts[i].Host == host){
-           return &graph.Hosts[i]
-       }
-   }
-   return nil
+   
+   return graph.Hosts[host]
+   
+  
 }
 
 
@@ -122,7 +104,8 @@ func main(){
    
    host := myGraph.getHost("192.168.1.2:8088")
    
-   host.addHost("192.168.1.22:9090",10)
+   host.addConnection("192",2)
+   host.addConnection("194",33)
   
    
    
