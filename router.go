@@ -2,7 +2,10 @@ package main
 
 import (
     "fmt"
+    "net"
+    "time"
     "log"
+    "io/ioutil"
     "os/exec"
     "encoding/json"
     "github.com/twmb/algoimpl/go/graph"
@@ -33,12 +36,36 @@ type SpanningTree struct{
     
 }
 
+func listenForRouter(router Router) {
+    println("listening")
+    for true {
+        In, err := net.Listen("tcp", ":" + strconv.Itoa(router.Port))
+        checkError(err)
+        for {
+            _, err := In.Accept()
+            if err != nil {
+                checkError(err)
+            }
+            println("hi")
+                    
+                    
+        }
+    }
+}
+
 
 func main(){
     
    clear()
-   fmt.Println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
-    
+   println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
+   
+   data, err := ioutil.ReadFile("routerinfo.json")
+   checkError(err)
+   var testRouter Router
+   
+   err = json.Unmarshal(data,&testRouter)
+   checkError(err)
+    /*
         testRouter := Router {
             IP: "192.168.1.1",
             Port: 1232,
@@ -62,6 +89,8 @@ func main(){
                 },
                 
           }//end of struct Declaration
+          */
+          go listenForRouter(testRouter)
         
            b, _ := json.Marshal(testRouter);
            s := string(b)
@@ -90,9 +119,30 @@ func main(){
            s = string(b)
            
            fmt.Println(s)
+           boot(testRouter)
+           for true {
+               
+           }
     }
+ func boot(myRouter Router) {
+     // for node in neighbors
+     //    are you alive
+     for i:=0; i < len(myRouter.Neighbours); i++ {
+         fmt.Println(myRouter.Neighbours[i].IP)
+         _, err:= net.DialTimeout("tcp", myRouter.Neighbours[i].IP + ":" + strconv.Itoa(myRouter.Neighbours[i].Port), time.Duration(1) * time.Second)
+         //checkError(err)
+         if(err != nil && err.(net.Error).Timeout()) {
+             println("ʕ◔ϖ◔ʔ halp, we timed the fuck out ʕ◔ϖ◔ʔ")
+         }
+     }
+        
+ }
 
 
+func println(dis string) {
+    dis = "ʕ◔ϖ◔ʔ " + dis + " ʕ◔ϖ◔ʔ"
+    fmt.Println(dis)
+}
 
 //General Error Catching 
 func checkError(err error)  {
