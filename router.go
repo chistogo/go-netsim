@@ -12,9 +12,12 @@ import (
     "strconv"
 	"os"
 )
+
+
+
+ 
  
 //Router This struct represents a router and contains it's properties
-
 
 type Neighbour struct{
     IP string
@@ -29,9 +32,23 @@ type Router struct{
     Neighbours []Neighbour
 }
 
-type SpanningTree struct{
-    
+
+type Connection struct{
+    weight int
+    ip string
 }
+
+type Host struct{
+    host string
+    connections []Connection
+}
+
+
+type NetworkGraph struct{
+    hosts []Host
+}
+
+
 
 func listenForRouter(router Router) {
     println("listening")
@@ -52,7 +69,25 @@ func listenForRouter(router Router) {
 
 
 func main(){
-    
+   
+   myGraph := NetworkGraph{
+       hosts : []Host{
+           {
+               host : "127.0.0.1:1111",
+               connections : []Connection{
+                   {
+                      ip : "127.0.0.1:2222",
+                      weight : 10,
+                   },
+                   {
+                       ip: "127.0.0.1:3333",
+                       weight:20,
+                   },
+               },
+           },
+       },
+   }
+   
    clear()
    println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
    
@@ -61,6 +96,11 @@ func main(){
    if(len(os.Args[1:]) == 1){
        fileName = os.Args[1]
    }
+   
+   myGraph := NetworkGraph{
+       
+   }
+   
    
    
    //Read in JSON file to create the router Struct
