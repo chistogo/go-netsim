@@ -34,18 +34,63 @@ type Router struct{
 
 
 type Connection struct{
-    weight int
-    ip string
+    Weight int
+    Ip string
 }
 
 type Host struct{
-    host string
-    connections []Connection
+    Host string
+    Connections []Connection
 }
 
 
 type NetworkGraph struct{
-    hosts []Host
+    Hosts []Host
+}
+
+
+func createConnection(weight int,ip string) *Connection{
+    conn := Connection{
+        Ip : ip,
+        Weight : weight,
+    }
+    
+    return &conn
+}
+
+
+func (conn *Host) addHost(ip string, weight int){
+    newConn := Connection{
+        Ip : ip,
+        Weight: weight,
+    }
+    conn.Connections = append(conn.Connections,newConn)
+}
+
+func (graph *NetworkGraph) addHost(newHost string){
+    myHost := Host{
+        Host : newHost,
+    }
+    graph.Hosts = append(graph.Hosts,myHost)
+}
+
+func createGraph() *NetworkGraph  {
+    myGraph := NetworkGraph{
+        Hosts : []Host{
+            
+        },
+    }
+    
+    return &myGraph
+}
+
+func (graph *NetworkGraph) getHost(host string)*Host{
+   for i := 0; i < len(graph.Hosts); i++ {
+       if(graph.Hosts[i].Host == host){
+           return &graph.Hosts[i]
+       }
+   }
+   return nil
 }
 
 
@@ -70,24 +115,18 @@ func listenForRouter(router Router) {
 
 func main(){
    
-   myGraph := NetworkGraph{
-       hosts : []Host{
-           {
-               host : "127.0.0.1:1111",
-               connections : []Connection{
-                   {
-                      ip : "127.0.0.1:2222",
-                      weight : 10,
-                   },
-                   {
-                       ip: "127.0.0.1:3333",
-                       weight:20,
-                   },
-               },
-           },
-       },
-   }
+   myGraph := createGraph();
    
+   myGraph.addHost("192.168.1.1:8088")
+   myGraph.addHost("192.168.1.2:8088")
+   
+   host := myGraph.getHost("192.168.1.2:8088")
+   
+   host.addHost("192.168.1.22:9090",10)
+  
+   
+   
+
    clear()
    println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
    
@@ -96,10 +135,7 @@ func main(){
    if(len(os.Args[1:]) == 1){
        fileName = os.Args[1]
    }
-   
-   myGraph := NetworkGraph{
-       
-   }
+
    
    
    
@@ -141,10 +177,10 @@ func main(){
     }
     
     //Test to find the minimum spanning tree.
-    mst := tree.DijkstraSearch(nodes[nodeWeIs])
+    //mst := tree.DijkstraSearch(nodes[nodeWeIs])
     
     //Turn that tree to json for sending
-    b, _ := json.Marshal(mst);
+    b, _ := json.Marshal(myGraph);
     s := string(b)
     //Print out the json for testing
     fmt.Println(s)
