@@ -10,6 +10,7 @@ import (
     "encoding/json"
     "github.com/twmb/algoimpl/go/graph"
     "strconv"
+	"os"
 )
  
 //Router This struct represents a router and contains it's properties
@@ -21,10 +22,6 @@ type Neighbour struct{
     Weight int
     
 }
-
-// type Neighbours struct{
-//     ne
-// }
 
 type Router struct{
     IP string
@@ -59,8 +56,15 @@ func main(){
    clear()
    println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
    
+   
+   fileName := "routerinfo.json"
+   if(len(os.Args[1:]) == 1){
+       fileName = os.Args[1]
+   }
+   
+   
    //Read in JSON file to create the router Struct
-   data, err := ioutil.ReadFile("routerinfo.json")
+   data, err := ioutil.ReadFile(fileName)
    checkError(err)
    
    //Create Router Struct and turn json into Struct
@@ -100,8 +104,8 @@ func main(){
     mst := tree.DijkstraSearch(nodes[nodeWeIs])
     
     //Turn that tree to json for sending
-    b, _ = json.Marshal(mst);
-    s = string(b)
+    b, _ := json.Marshal(mst);
+    s := string(b)
     //Print out the json for testing
     fmt.Println(s)
     
