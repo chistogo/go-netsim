@@ -320,6 +320,18 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             
             fmt.Println(string(connectorIPBytes))
         }else if(receivingGraph == connectorIPBytes[0]){
+            println("recieving graph")
+            connectorIPBytes = connectorIPBytes[1:]
+            timestamp, _ := time.Now().MarshalText()
+            newGraph := createGraph(string(timestamp))
+            json.Unmarshal(connectorIPBytes, newGraph)
+            newTime, _ := time.Parse(newGraph.Name, newGraph.Name)
+            oldTime, _ := time.Parse(newGraph.Name, graph.Name)
+            if(newTime.Unix() > oldTime.Unix() ) {
+                graph = newGraph 
+            } else {
+                println("recieved older graph!")
+            }
             
         }else{
             fmt.Println("UNEXPECTED CASE HAS HAPPENED ERROR : 325")
@@ -385,7 +397,9 @@ func scanForNeighbours(router *Router,graph *Graph){
     
 }
 
-
+func sendGraph(json string) {
+    
+}
 
 
 
