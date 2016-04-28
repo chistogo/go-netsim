@@ -292,7 +292,10 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
     rand.Seed(time.Now().Unix())
     weight := rand.Intn(9) + 1
     
-    connectorIPBytes, err := bufio.NewReader(conn).ReadString('\n')
+    
+    
+    //Read in the IP From scanner
+    connectorIPBytes, err := bufio.NewReader(conn).ReadString(byte(0x4))
     EOFerror := checkNetworkRead(err)
     //if Weight exists already in graph
     // if(router.Neighbours[connectorIPBytes] != 0) {
@@ -302,7 +305,7 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
   
     
     if(!EOFerror){
-        fmt.Fprintf(conn,strconv.Itoa(weight)+"\n")
+        fmt.Fprintf(conn,strconv.Itoa(weight)+string(byte(0x4)))
         
         pleaseRemoveNewLine := []byte(connectorIPBytes)
         connectorIPBytes = string(pleaseRemoveNewLine[:len(pleaseRemoveNewLine)-1])
@@ -334,8 +337,8 @@ func scanForNeighbours(router *Router,graph *Graph){
         
         if(checkNetworkError(err) && val == 0){
             timeStamp , _ := time.Now().MarshalText()
-            fmt.Fprintf(conn, router.IP + "\n")
-            message , _ := bufio.NewReader(conn).ReadString('\n') 
+            fmt.Fprintf(conn, router.IP + string(byte(0x4)))
+            message , _ := bufio.NewReader(conn).ReadString(byte(0x4)) 
             conn.Close()
             
             //Update Weight in router
