@@ -7,6 +7,7 @@ import (
     "log"
     "math/rand"
     "io/ioutil"
+    "io"
     "os/exec"
     "bufio"
     "encoding/json"
@@ -263,10 +264,10 @@ func main(){
     
     //fmt.Println(string(theJSON))
     
-    go listenForScan(router)
+    go listenForScan(router,graph)
     
     for{
-        time.Sleep(time.Second * 15)
+        time.Sleep(time.Second * 2)
         scanForNeighbours(router,graph)
         fmt.Println(string(graph.toJson()))
     }
@@ -274,28 +275,46 @@ func main(){
     
  }
 
-func listenForScan(router *Router)  {
+func listenForScan(router *Router,graph *Graph)  {
     ln, err := net.Listen("tcp",router.IP)
     checkError(err)
     for{
         conn, err := ln.Accept()
-        if err != nil {
-            checkError(err)
-        }
-        go handleListenForScan(conn,router)
+        checkError(err)
+       
+        go handleListenForScan(conn,router,graph)
     }
 }
 
-func handleListenForScan(conn net.Conn,router *Router)  {
+func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
    
     //Generate Random Weight (SEED RANDOM)
     rand.Seed(time.Now().Unix())
     weight := rand.Intn(9) + 1
     
     connectorIPBytes, err := bufio.NewReader(conn).ReadString('\n')
-    checkError(err)
-    fmt.Fprintf(conn,strconv.Itoa(weight)+"\n")
-    fmt.Println(string(connectorIPBytes))
+    EOFerror := checkNetworkRead(err)
+    //if Weight exists already in graph
+    // if(router.Neighbours[connectorIPBytes] != 0) {
+    //     weight = router.Neighbours[connectorIPBytes]
+    // }
+    
+  
+    
+    if(!EOFerror){
+        fmt.Fprintf(conn,strconv.Itoa(weight)+"\n")
+        
+        pleaseRemoveNewLine := []byte(connectorIPBytes)
+        connectorIPBytes = string(pleaseRemoveNewLine[:len(pleaseRemoveNewLine)-1])
+        
+        graph.addNode(connectorIPBytes)
+        graph.addUndirectedWeightedVertice(connectorIPBytes,router.IP,weight)
+        
+        
+        fmt.Println(string(connectorIPBytes))
+    }
+    
+    conn.Close()
     
     
     
@@ -310,25 +329,23 @@ func scanForNeighbours(router *Router,graph *Graph){
         conn, err := net.Dial("tcp", ip)
       
         //Error Checking
-         
+        fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
+        
         
         if(checkNetworkError(err) && val == 0){
             timeStamp , _ := time.Now().MarshalText()
             fmt.Fprintf(conn, router.IP + "\n")
-            message , err := bufio.NewReader(conn).ReadString('\n') 
+            message , _ := bufio.NewReader(conn).ReadString('\n') 
             conn.Close()
-            if err != nil {
-                checkError(err)
-            }   
+            
             //Update Weight in router
             
             messageBytes := []byte(message)
             message = string(messageBytes[:len(messageBytes)-1])
-            val, err = strconv.Atoi(message)   
+            fmt.Println("Weight: "+message)
+            router.Neighbours[ip], _ = strconv.Atoi(message)   
            // fmt.Println("WE DID IT: "+message)
-            if err != nil {
-                checkError(err)
-            }
+            
             //Add To Graph
             
             
@@ -337,13 +354,17 @@ func scanForNeighbours(router *Router,graph *Graph){
             
            // fmt.Println(string(graph.toJson()))
             
-            graph.addUndirectedWeightedVertice(router.IP,ip,val)  
+            graph.addUndirectedWeightedVertice(router.IP,ip,router.Neighbours[ip])  
             //Update TimeStamp
             graph.Name = string(timeStamp)
             
+            
+        }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0
+          val = 0
+          graph.removeNode(ip)
+           
         }else{
-            graph.removeNode(ip)
-            val = 0
+            //OTHER
         }
         
     }
@@ -402,4 +423,16 @@ func clear(){
 
 	print(string(stdout))
 
+}
+
+
+
+func checkNetworkRead(err error)bool  {
+    if(err == io.EOF){
+        fmt.Println("Suppressing EOF ERROR")
+        return true
+    }else{
+        checkError(err)
+    }
+    return false
 }
