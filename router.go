@@ -288,14 +288,16 @@ func listenForScan(router *Router,graph *Graph)  {
 
 func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
    
+    receivingGraph := byte(0x61)
+    receivingScan := byte(0x62)
+   
+   
     //Generate Random Weight (SEED RANDOM)
     rand.Seed(time.Now().Unix())
     weight := rand.Intn(9) + 1
     
-    
-    
     //Read in the IP From scanner
-    connectorIPBytes, err := bufio.NewReader(conn).ReadString(byte(0x4))
+    connectorIPBytes, err := bufio.NewReader(conn).ReadBytes(byte(0x4))
     EOFerror := checkNetworkRead(err)
     //if Weight exists already in graph
     // if(router.Neighbours[connectorIPBytes] != 0) {
@@ -305,16 +307,25 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
   
     
     if(!EOFerror){
-        fmt.Fprintf(conn,strconv.Itoa(weight)+string(byte(0x4)))
         
-        pleaseRemoveNewLine := []byte(connectorIPBytes)
-        connectorIPBytes = string(pleaseRemoveNewLine[:len(pleaseRemoveNewLine)-1])
+        if(receivingScan == connectorIPBytes[0] ){
+            fmt.Fprintf(conn,strconv.Itoa(weight)+string(byte(0x4)))
+            
+            pleaseRemoveNewLine := []byte(connectorIPBytes)
+            connectorIPBytes = pleaseRemoveNewLine[:len(pleaseRemoveNewLine)-1]
+            
+            graph.addNode(string(connectorIPBytes[1:]))
+            graph.addUndirectedWeightedVertice(string(connectorIPBytes[1:]),router.IP,weight)
+            
+            
+            fmt.Println(string(connectorIPBytes))
+        }else if(receivingGraph == connectorIPBytes[0]){
+            
+        }else{
+            fmt.Println("UNEXPECTED CASE HAS HAPPENED ERROR : 325")
+        }
         
-        graph.addNode(connectorIPBytes)
-        graph.addUndirectedWeightedVertice(connectorIPBytes,router.IP,weight)
         
-        
-        fmt.Println(string(connectorIPBytes))
     }
     
     conn.Close()
@@ -330,14 +341,14 @@ func scanForNeighbours(router *Router,graph *Graph){
     
     for ip, val := range router.Neighbours{
         conn, err := net.Dial("tcp", ip)
-      
+        
         //Error Checking
         fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
         
         
         if(checkNetworkError(err) && val == 0){
             timeStamp , _ := time.Now().MarshalText()
-            fmt.Fprintf(conn, router.IP + string(byte(0x4)))
+            fmt.Fprintf(conn,string(0x62) +router.IP + string(byte(0x4)))
             message , _ := bufio.NewReader(conn).ReadString(byte(0x4)) 
             conn.Close()
             
