@@ -5,9 +5,10 @@ import (
     "net"
     "time"
     "log"
-    //"io"
+    "math/rand"
     "io/ioutil"
     "os/exec"
+    "bufio"
     "encoding/json"
     "strconv"
 	"os"
@@ -254,18 +255,20 @@ func main(){
     timeStamp , _ := time.Now().MarshalText()
     
     graph := createGraph(string(timeStamp))
-    theJSON, _ := json.Marshal(router)
+    graph.addNode(router.IP)
+    //theJSON, _ := json.Marshal(router)
     //theJSON, _ = json.Marshal(graph)
     
     scanForNeighbours(router,graph)
     
-    fmt.Println(string(theJSON))
+    //fmt.Println(string(theJSON))
     
     go listenForScan(router)
     
     for{
         time.Sleep(time.Second * 15)
         scanForNeighbours(router,graph)
+        fmt.Println(string(graph.toJson()))
     }
 
     
@@ -284,36 +287,63 @@ func listenForScan(router *Router)  {
 }
 
 func handleListenForScan(conn net.Conn,router *Router)  {
-    //Generate Random Weight
+   
+    //Generate Random Weight (SEED RANDOM)
+    rand.Seed(time.Now().Unix())
+    weight := rand.Intn(9) + 1
+    
+    connectorIPBytes, err := bufio.NewReader(conn).ReadString('\n')
+    checkError(err)
+    fmt.Fprintf(conn,strconv.Itoa(weight)+"\n")
+    fmt.Println(string(connectorIPBytes))
+    
+    
+    
 }
 
 
 func scanForNeighbours(router *Router,graph *Graph){
     
-    for ip, _ := range router.Neighbours{
+
+    
+    for ip, val := range router.Neighbours{
         conn, err := net.Dial("tcp", ip)
       
         //Error Checking
          
         
-        if(checkNetworkError(err)){
+        if(checkNetworkError(err) && val == 0){
             timeStamp , _ := time.Now().MarshalText()
-            fmt.Fprintf(conn, router.IP)
-            bytes , err := ioutil.ReadAll(conn)
+            fmt.Fprintf(conn, router.IP + "\n")
+            message , err := bufio.NewReader(conn).ReadString('\n') 
+            conn.Close()
             if err != nil {
                 checkError(err)
             }   
             //Update Weight in router
-            router.Neighbours[ip], err = strconv.Atoi(string(bytes))   
+            
+            messageBytes := []byte(message)
+            message = string(messageBytes[:len(messageBytes)-1])
+            val, err = strconv.Atoi(message)   
+           // fmt.Println("WE DID IT: "+message)
             if err != nil {
                 checkError(err)
             }
             //Add To Graph
+            
+            
+            
             graph.addNode(ip)
-            graph.addUndirectedWeightedVertice(router.IP,ip,router.Neighbours[ip])  
+            
+           // fmt.Println(string(graph.toJson()))
+            
+            graph.addUndirectedWeightedVertice(router.IP,ip,val)  
             //Update TimeStamp
             graph.Name = string(timeStamp)
             
+        }else{
+            graph.removeNode(ip)
+            val = 0
         }
         
     }
