@@ -225,9 +225,6 @@ func (router *Router) removeNeighbour(ip string){
 }
 
 
-
-
-
 func main(){
    
    clear()
@@ -253,7 +250,8 @@ func main(){
     // router.addNeighbour("127.0.0.1:9002",0)
     // router.addNeighbour("127.0.0.1:9003",0)
     
-    timeStamp , _ := time.Now().MarshalText()
+    // Something old
+    timeStamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Unix();
     
     graph := createGraph(string(timeStamp))
     graph.addNode(router.IP)
@@ -267,7 +265,7 @@ func main(){
     go listenForScan(router,graph)
     
     for{
-        time.Sleep(time.Second * 2)
+        time.Sleep(time.Second * 10)
         scanForNeighbours(router,graph)
         fmt.Println(string(graph.toJson()))
     }
@@ -323,16 +321,17 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
         }else if(receivingGraph == connectorIPBytes[0]){
 
             println("recieving graph")
-            connectorIPBytes = connectorIPBytes[1:]
-            newGraph := createGraph("b")
+            connectorIPBytes = connectorIPBytes[1:len(connectorIPBytes) - 1]
+            var newGraph Graph
+            fmt.Println("gots me some " + string(connectorIPBytes))
             json.Unmarshal(connectorIPBytes, &newGraph)
             println("new graph")
             println(string(newGraph.toJson()))
             println("end new graph")
-            newTime, _ := time.Parse(newGraph.Name, newGraph.Name)
-            oldTime, _ := time.Parse(newGraph.Name, graph.Name)
-            if(newTime.Unix() > oldTime.Unix() ) {
-                graph = newGraph 
+            newTime ,_ := strconv.ParseInt(newGraph.Name, 10 ,64)
+            oldTime, _ := strconv.ParseInt(graph.Name,10,64)
+            if(newTime  > oldTime ) {
+                graph = &newGraph 
             } else {
                 println("recieved older graph!")
             }
@@ -340,8 +339,6 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
         }else{
             fmt.Println("UNEXPECTED CASE HAS HAPPENED ERROR : 325")
         }
-        
-        
     }
     
     conn.Close()
@@ -360,10 +357,9 @@ func scanForNeighbours(router *Router,graph *Graph){
         
         //Error Checking
         fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
-        
+        timeStamp := string(time.Now().Unix())
         
         if(checkNetworkError(err) && val == 0){
-            timeStamp , _ := time.Now().MarshalText()
             fmt.Fprintf(conn,string(0x62) +router.IP + string(byte(0x4)))
             message , _ := bufio.NewReader(conn).ReadString(byte(0x4)) 
             conn.Close()
@@ -389,28 +385,37 @@ func scanForNeighbours(router *Router,graph *Graph){
             //Update TimeStamp
             graph.Name = string(timeStamp)
             
+            sendGraph(graph, router)
+            
             
         }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0
           val = 0
           graph.removeNode(ip)
+          graph.Name = string(timeStamp)
           println("removing node " + ip)
-          // do we need to send the graph here since we've determined this node is dead?
+          sendGraph(graph, router)
            
         }else{
             //OTHER
-            println("OTHER HALP")
-            println("")
         }
         
     }
     
 }
 
-func sendGraph(graph *Graph, conn net.Conn) {
+func sendGraph(graph *Graph, router *Router) {
     // want to send this to all nodes
-    sendgraph := []byte{0x61}
-    bytesOfGraph := graph.toJson()
-    conn.Write(append(sendgraph,bytesOfGraph...))
+    
+    for ip, weight := range graph.Nodes[router.IP].Edges {
+        fmt.Println("IP: " + ip + " Weight: " + strconv.Itoa(weight))
+        
+        conn, err := net.Dial("tcp", ip)
+        if(checkNetworkError(err)) {
+            fmt.Println("Sending graph to " + ip)
+            fmt.Println("sending " + string(graph.toJson()))
+            fmt.Fprintf(conn, string(byte(0x61)) + string(graph.toJson()) + string(byte(0x4)))
+        }
+    }
     
 }
 
