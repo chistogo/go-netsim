@@ -15,6 +15,10 @@ import (
 	"os"
 )
 
+
+var firstScan bool
+
+
 //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< GRAPH >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
@@ -230,6 +234,7 @@ func main(){
    clear()
    println("ʕ◔ϖ◔ʔ  Welcome to the GO NetSim, Router Process!!!  ʕ◔ϖ◔ʔ")
    
+    firstScan = true
    
     fileName := "router1.json"
     if(len(os.Args[1:]) == 1){
@@ -251,9 +256,12 @@ func main(){
     // router.addNeighbour("127.0.0.1:9003",0)
     
     // Something old
-    timeStamp := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC).Unix();
+    timeStamp := int64(0);
     
-    graph := createGraph(string(timeStamp))
+    graph := createGraph(strconv.FormatInt(timeStamp, 10))
+    
+    fmt.Println("Timestamp:"+ strconv.FormatInt(timeStamp, 10))
+    
     graph.addNode(router.IP)
     //theJSON, _ := json.Marshal(router)
     //theJSON, _ = json.Marshal(graph)
@@ -265,9 +273,13 @@ func main(){
     go listenForScan(router,graph)
     
     for{
-        time.Sleep(time.Second * 10)
+        time.Sleep(time.Second * 5)
         scanForNeighbours(router,graph)
-        fmt.Println(string(graph.toJson()))
+        
+        jsonOfRouter , _ := json.Marshal(router)
+        
+        fmt.Println("State of ROUTER: "+string(jsonOfRouter))
+        fmt.Println("State of Graph:"+string(graph.toJson()))
     }
 
     
@@ -323,15 +335,16 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             println("recieving graph")
             connectorIPBytes = connectorIPBytes[1:len(connectorIPBytes) - 1]
             var newGraph Graph
-            fmt.Println("gots me some " + string(connectorIPBytes))
+            //fmt.Println("gots me some " + string(connectorIPBytes))
             json.Unmarshal(connectorIPBytes, &newGraph)
-            println("new graph")
-            println(string(newGraph.toJson()))
-            println("end new graph")
+            //println("new graph")
+            //println(string(newGraph.toJson()))
+           // println("end new graph")
             newTime ,_ := strconv.ParseInt(newGraph.Name, 10 ,64)
             oldTime, _ := strconv.ParseInt(graph.Name,10,64)
             if(newTime  > oldTime ) {
-                graph = &newGraph 
+                fmt.Println("Receiced newgraph .............................")
+                *graph = newGraph 
             } else {
                 println("recieved older graph!")
             }
@@ -356,8 +369,17 @@ func scanForNeighbours(router *Router,graph *Graph){
         conn, err := net.Dial("tcp", ip)
         
         //Error Checking
-        fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
-        timeStamp := string(time.Now().Unix())
+        //fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
+        
+        var timeStamp int64
+        
+        if firstScan {
+            timeStamp = int64(0)
+            firstScan = false
+        }else{
+            timeStamp = time.Now().Unix()
+        }
+        
         
         if(checkNetworkError(err) && val == 0){
             fmt.Fprintf(conn,string(0x62) +router.IP + string(byte(0x4)))
@@ -383,20 +405,21 @@ func scanForNeighbours(router *Router,graph *Graph){
             
             graph.addUndirectedWeightedVertice(router.IP,ip,router.Neighbours[ip])  
             //Update TimeStamp
-            graph.Name = string(timeStamp)
+            graph.Name = strconv.FormatInt(timeStamp,10)
             
             sendGraph(graph, router)
             
-            
+        //If there is a network error happens and the val in router is not 0
         }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0
-          val = 0
+          router.Neighbours[ip] = 0
           graph.removeNode(ip)
-          graph.Name = string(timeStamp)
+          graph.Name = strconv.FormatInt(timeStamp,10)
           println("removing node " + ip)
-          sendGraph(graph, router)
+          //sendGraph(graph, router)
            
         }else{
             //OTHER
+            //sendGraph(graph, router)
         }
         
     }
@@ -440,7 +463,7 @@ func checkNetworkError(err error) (shouldRun bool) {
     println("Timeout")
   } else if opError, ok := err.(*net.OpError); ok {
     if opError.Op == "dial" {
-      println("Unknown host")
+      //println("Unknown host")
     } else if opError.Op == "read" {
       println("Connection refused")
     }
