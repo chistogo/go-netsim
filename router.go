@@ -174,7 +174,19 @@ func (graph *Graph) toJson()([]byte){
     return theJSON
 }
 
+func (graph *Graph) removeNodesWithNoEdges(){
 
+    for _, val := range graph.Nodes{
+        
+        if(len(val.Edges) == 0){
+            //delete(graph.Nodes,key)
+            //graph.TotalNodes = graph.TotalNodes - 1
+        }
+        
+    }
+
+
+}
 func (graph *Graph) removeNode(idOfNode string){
     
  
@@ -273,7 +285,7 @@ func main(){
     go listenForScan(router,graph)
     
     for{
-        time.Sleep(time.Second * 5)
+        time.Sleep(time.Second * 1)
         scanForNeighbours(router,graph)
         
         jsonOfRouter , _ := json.Marshal(router)
@@ -364,6 +376,8 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
 func scanForNeighbours(router *Router,graph *Graph){
     
 
+    sendGraphReq := false
+
     
     for ip, val := range router.Neighbours{
         conn, err := net.Dial("tcp", ip)
@@ -407,7 +421,7 @@ func scanForNeighbours(router *Router,graph *Graph){
             //Update TimeStamp
             graph.Name = strconv.FormatInt(timeStamp,10)
             
-            sendGraph(graph, router)
+            sendGraphReq = true
             
         //If there is a network error happens and the val in router is not 0
         }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0
@@ -415,7 +429,7 @@ func scanForNeighbours(router *Router,graph *Graph){
           graph.removeNode(ip)
           graph.Name = strconv.FormatInt(timeStamp,10)
           println("removing node " + ip)
-          //sendGraph(graph, router)
+          sendGraphReq = true;
            
         }else{
             //OTHER
@@ -423,6 +437,13 @@ func scanForNeighbours(router *Router,graph *Graph){
         }
         
     }
+    
+    graph.removeNodesWithNoEdges()
+    
+    if(sendGraphReq){
+        sendGraph(graph, router)
+    }
+    
     
 }
 
