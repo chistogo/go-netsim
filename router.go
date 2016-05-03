@@ -409,7 +409,8 @@ func scanForNeighbours(router *Router,graph *Graph){
 func sendGraph(graph *Graph, conn net.Conn) {
     // want to send this to all nodes
     sendgraph := []byte{0x61}
-    conn.Write(append(sendgraph,graph.toJson()))
+    bytesOfGraph := graph.toJson()
+    conn.Write(append(sendgraph,bytesOfGraph...))
     
 }
 
