@@ -319,12 +319,16 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             
             
             fmt.Println(string(connectorIPBytes))
+            
         }else if(receivingGraph == connectorIPBytes[0]){
+
             println("recieving graph")
             connectorIPBytes = connectorIPBytes[1:]
-            timestamp, _ := time.Now().MarshalText()
-            newGraph := createGraph(string(timestamp))
-            json.Unmarshal(connectorIPBytes, newGraph)
+            newGraph := createGraph("b")
+            json.Unmarshal(connectorIPBytes, &newGraph)
+            println("new graph")
+            println(string(newGraph.toJson()))
+            println("end new graph")
             newTime, _ := time.Parse(newGraph.Name, newGraph.Name)
             oldTime, _ := time.Parse(newGraph.Name, graph.Name)
             if(newTime.Unix() > oldTime.Unix() ) {
@@ -374,6 +378,7 @@ func scanForNeighbours(router *Router,graph *Graph){
             
             //Add To Graph
             
+            println("adding node " + ip)
             
             
             graph.addNode(ip)
@@ -388,29 +393,31 @@ func scanForNeighbours(router *Router,graph *Graph){
         }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0
           val = 0
           graph.removeNode(ip)
+          println("removing node " + ip)
+          // do we need to send the graph here since we've determined this node is dead?
            
         }else{
             //OTHER
+            println("OTHER HALP")
+            println("")
         }
         
     }
     
 }
 
-func sendGraph(json string) {
+func sendGraph(graph *Graph, conn net.Conn) {
+    // want to send this to all nodes
+    sendgraph := []byte{0x61}
+    conn.Write(append(sendgraph,graph.toJson()))
     
 }
-
-
 
 //Makes strings more gophery
 func println(dis string) {
     dis = "ʕ◔ϖ◔ʔ " + dis + " ʕ◔ϖ◔ʔ"
     fmt.Println(dis)
 }
-
-
-
 
 //General Error Catching
 func checkError(err error)  {
