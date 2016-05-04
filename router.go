@@ -357,6 +357,8 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             if(newTime  > oldTime ) {
                 fmt.Println("Receiced newgraph .............................")
                 *graph = newGraph 
+                // propogate the graph throughout
+                sendGraph(graph, router)
             } else {
                 println("recieved older graph!")
             }
