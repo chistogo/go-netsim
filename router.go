@@ -448,7 +448,11 @@ func scanForNeighbours(router *Router,graph *Graph){
 }
 
 func sendGraph(graph *Graph, router *Router) {
-    // want to send this to all nodes
+    // Write our graph.json to the current directory
+    // This is here because this is called everytime there is a change to our graph
+    // Note: Currently every router will try to write this file
+    err := ioutil.WriteFile("graph.json", graph.toJson(), 0644)
+    checkError(err)
     
     for ip, weight := range graph.Nodes[router.IP].Edges {
         fmt.Println("IP: " + ip + " Weight: " + strconv.Itoa(weight))
