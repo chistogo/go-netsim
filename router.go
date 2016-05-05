@@ -359,7 +359,7 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             sizeOfField := binary.LittleEndian.Uint32(connectorIPBytes[1:5]) // inclusive:exclusive
             println("Size of dest is " + strconv.FormatInt(int64(sizeOfField), 10))
             dest := connectorIPBytes[5:5+sizeOfField]
-            
+            println(string(dest))
             fmt.Println(graph.Dijkstra(router.IP, string(dest)))
             _, y := graph.Dijkstra(router.IP, string(dest))
             fmt.Println(string(dest))

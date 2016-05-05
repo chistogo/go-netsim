@@ -371,34 +371,38 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
 }
 
 func sendFiles(router *Router, graph *Graph) {
-    fmt.Print("Please enter your message: ")
-    reader := bufio.NewReader(os.Stdin)
-    message, _:= reader.ReadString('\n')
-    message = message[0:len(message) - 1]
-    message = string(message)
-    
-    fmt.Print("Please enter your destination with port number: ")
-    dest, _:= reader.ReadString('\n')
-    dest = dest[0:len(dest) - 1]
-    dest = string(dest)
-    
-    stringToSend := string(byte(0x1))
-    buf := new(bytes.Buffer)
-    err := binary.Write(buf, binary.LittleEndian, uint32(len(dest)))
-    checkError(err)
-    stringToSend += string(buf.Bytes()) + dest 
-    
-    buf = new(bytes.Buffer)
-    err = binary.Write(buf, binary.LittleEndian, uint32(len(message)))
-    checkError(err)
-    stringToSend += string(buf.Bytes()) + message + string(byte(0x4))
-
-    // since we are a client, we only have one neighbor
-    for ip := range router.Neighbours {
-        conn, err := net.Dial("tcp", ip)
+    for {
+        fmt.Print("Please enter your message: ")
+        reader := bufio.NewReader(os.Stdin)
+        message, _:= reader.ReadString('\n')
+        message = message[0:len(message) - 1]
+        message = string(message)
+        
+        fmt.Print("Please enter your destination with port number: ")
+        dest, _:= reader.ReadString('\n')
+        dest = dest[0:len(dest) - 1]
+        dest = string(dest)
+        
+        stringToSend := string(byte(0x1))
+        buf := new(bytes.Buffer)
+        err := binary.Write(buf, binary.LittleEndian, uint32(len(dest)))
         checkError(err)
-        fmt.Fprintf(conn, stringToSend)
+
+        stringToSend += string(buf.Bytes()) + dest 
+        
+        buf = new(bytes.Buffer)
+        err = binary.Write(buf, binary.LittleEndian, uint32(len(message)))
+        checkError(err)
+        stringToSend += string(buf.Bytes()) + message + string(byte(0x4))
+
+        // since we are a client, we only have one neighbor
+        for ip := range router.Neighbours {
+            conn, err := net.Dial("tcp", ip)
+            checkError(err)
+            fmt.Fprintf(conn, stringToSend)
+        }
     }
+    
 }
 
 
