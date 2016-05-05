@@ -282,10 +282,10 @@ func main(){
         time.Sleep(time.Second * 1)
         scanForNeighbours(router,graph)
         
-        jsonOfRouter , _ := json.Marshal(router)
+        //jsonOfRouter , _ := json.Marshal(router)
         
-        fmt.Println("State of CLIENT: "+string(jsonOfRouter))
-        fmt.Println("State of Graph:"+string(graph.toJson()))
+        //fmt.Println("State of CLIENT: "+string(jsonOfRouter))
+        //fmt.Println("State of Graph:"+string(graph.toJson()))
     }
 
     
@@ -305,23 +305,17 @@ func listenForScan(router *Router,graph *Graph)  {
 func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
    
     receivingGraph := byte(0x61)
-    receivingScan := byte(0x62)
-    receivingData := byte(0x01)
-   
-   
+    receivingScan  := byte(0x62)
+    receivingData  := byte(0x01)
+
     //Generate Random Weight (SEED RANDOM)
     rand.Seed(time.Now().Unix())
     weight := rand.Intn(9) + 1
     
     //Read in the IP From scanner
     connectorIPBytes, err := bufio.NewReader(conn).ReadBytes(byte(0x4))
-    EOFerror := checkNetworkRead(err)
-    //if Weight exists already in graph
-    // if(router.Neighbours[connectorIPBytes] != 0) {
-    //     weight = router.Neighbours[connectorIPBytes]
-    // }
     
-  
+    EOFerror := checkNetworkRead(err)
     
     if(!EOFerror){
         
@@ -330,23 +324,21 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             
             pleaseRemoveNewLine := []byte(connectorIPBytes)
             connectorIPBytes = pleaseRemoveNewLine[:len(pleaseRemoveNewLine)-1]
-            
-            
-            
-            
-            fmt.Println(string(connectorIPBytes))
+
+            //fmt.Println(string(connectorIPBytes))
             
         }else if(receivingGraph == connectorIPBytes[0]){
-            println("I'm a client, so I don't need this graph")
+            //println("I'm a client, so I don't need this graph")
 
         } else if(receivingData == connectorIPBytes[0]) {
             // we are the client, we want to write this data to a file
             // I am thinking length of dest field dest field 
             // length of name field name field
             // length of data field data field
+            
             currLoc := uint32(0)
-            connectorIPBytes := connectorIPBytes[1:]
-            sizeOfField := binary.BigEndian.Uint32(connectorIPBytes[0:4]) // inclusive:exclusive
+            connectorIPBytes := connectorIPBytes[1:len(connectorIPBytes) - 1]
+            sizeOfField := binary.LittleEndian.Uint32(connectorIPBytes[0:4]) // inclusive:exclusive
             println("Size of dest is " + strconv.FormatUint(uint64(sizeOfField), 10))
             dest := connectorIPBytes[4:4+sizeOfField]
             
@@ -354,20 +346,19 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             if(string(dest) != router.IP) {
                 fmt.Println("I got data addressed to " + string(dest))
                 return
+            } else {
+                fmt.Println("I got a letter!")
             }
+            println("data recieved " + strconv.Itoa(len(connectorIPBytes)))
             
             currLoc = 4 + sizeOfField
-            sizeOfField = binary.BigEndian.Uint32(connectorIPBytes[currLoc:currLoc + 4])
+            sizeOfField = binary.LittleEndian.Uint32(connectorIPBytes[currLoc:currLoc + 4])
             currLoc += 4
-            fileName := string(connectorIPBytes[currLoc: currLoc + sizeOfField])
             
-            currLoc += sizeOfField
-            sizeOfField = binary.BigEndian.Uint32(connectorIPBytes[currLoc:currLoc + 4])
-            currLoc += 4
-            data := connectorIPBytes[currLoc: currLoc + sizeOfField]
+            data := connectorIPBytes[currLoc:len(connectorIPBytes)]
             
             // now write to file
-            err := ioutil.WriteFile(fileName, data, 0644)
+            println("Recieved: " + string(data))
             checkError(err)
             
             
@@ -380,40 +371,33 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
 }
 
 func sendFiles(router *Router, graph *Graph) {
-    var fileName string
-    fmt.Print("Please enter your file name with extension: ")
-    _, err := fmt.Scanf("%s\n", &fileName)
-    checkError(err)
-    data, err := ioutil.ReadFile(fileName)
-    checkError(err)
+    fmt.Print("Please enter your message: ")
+    reader := bufio.NewReader(os.Stdin)
+    message, _:= reader.ReadString('\n')
+    message = message[0:len(message) - 1]
+    message = string(message)
     
-    var dest string
     fmt.Print("Please enter your destination with port number: ")
-    _, err = fmt.Scanf("%s\n", &dest)
-    checkError(err)
+    dest, _:= reader.ReadString('\n')
+    dest = dest[0:len(dest) - 1]
+    dest = string(dest)
+    
     stringToSend := string(byte(0x1))
-    
     buf := new(bytes.Buffer)
-    err = binary.Write(buf, binary.LittleEndian, uint32(len(dest)))
-    
+    err := binary.Write(buf, binary.LittleEndian, uint32(len(dest)))
+    checkError(err)
     stringToSend += string(buf.Bytes()) + dest 
     
     buf = new(bytes.Buffer)
-    err = binary.Write(buf, binary.LittleEndian, uint32(len(fileName)))
-    
-    stringToSend += string(buf.Bytes()) + fileName 
-    
-    buf = new(bytes.Buffer)
-    err = binary.Write(buf, binary.LittleEndian, uint32(len(data)))
-    
-    stringToSend += string(buf.Bytes()) + string(data)
-    
-    fmt.Println(stringToSend)
+    err = binary.Write(buf, binary.LittleEndian, uint32(len(message)))
+    checkError(err)
+    stringToSend += string(buf.Bytes()) + message + string(byte(0x4))
+
     // since we are a client, we only have one neighbor
     for ip := range router.Neighbours {
         conn, err := net.Dial("tcp", ip)
         checkError(err)
-        fmt.Fprintf(conn, stringToSend)
+        sent, _ := fmt.Fprintf(conn, stringToSend)
     }
 }
 
@@ -422,9 +406,6 @@ func scanForNeighbours(router *Router,graph *Graph){
     
     for ip, val := range router.Neighbours{
         conn, err := net.Dial("tcp", ip)
-        
-        //Error Checking
-        //fmt.Println("LOOPIN 4 DAYS     VAL: "+strconv.Itoa(val))
         
         
         if(checkNetworkError(err) && val == 0){
@@ -438,7 +419,6 @@ func scanForNeighbours(router *Router,graph *Graph){
             message = string(messageBytes[:len(messageBytes)-1])
             fmt.Println("Weight: "+message)
             router.Neighbours[ip], _ = strconv.Atoi(message)   
-           // fmt.Println("WE DID IT: "+message)
             
             //Add To Graph
             
@@ -447,11 +427,7 @@ func scanForNeighbours(router *Router,graph *Graph){
             
             graph.addNode(ip)
             
-           // fmt.Println(string(graph.toJson()))
-            
             graph.addUndirectedWeightedVertice(router.IP,ip,router.Neighbours[ip])  
-            //Update TimeStamp
-            //graph.Name = strconv.FormatInt(timeStamp,10)
             
         //If there is a network error happens and the val in router is not 0
         }else if(!checkNetworkError(err) && val != 0){ //DOEST connects and the weight in NOT 0

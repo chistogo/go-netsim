@@ -4,6 +4,7 @@ import (
     "fmt"
     "net"
     "time"
+    "encoding/binary"
     "log"
     "math/rand"
     "io/ioutil"
@@ -261,11 +262,6 @@ func main(){
     var router *Router
     err = json.Unmarshal(data,&router)
     checkError(err)
- 
-    //Create Router
-    // router := createRouter("127.0.0.1:9001")
-    // router.addNeighbour("127.0.0.1:9002",0)
-    // router.addNeighbour("127.0.0.1:9003",0)
     
     // Something old
     timeStamp := int64(0);
@@ -275,12 +271,8 @@ func main(){
     fmt.Println("Timestamp:"+ strconv.FormatInt(timeStamp, 10))
     
     graph.addNode(router.IP)
-    //theJSON, _ := json.Marshal(router)
-    //theJSON, _ = json.Marshal(graph)
     
     scanForNeighbours(router,graph)
-    
-    //fmt.Println(string(theJSON))
     
     go listenForScan(router,graph)
     
@@ -312,6 +304,7 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
    
     receivingGraph := byte(0x61)
     receivingScan := byte(0x62)
+    receivingData := byte(0x01)
    
    
     //Generate Random Weight (SEED RANDOM)
@@ -321,12 +314,6 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
     //Read in the IP From scanner
     connectorIPBytes, err := bufio.NewReader(conn).ReadBytes(byte(0x4))
     EOFerror := checkNetworkRead(err)
-    //if Weight exists already in graph
-    // if(router.Neighbours[connectorIPBytes] != 0) {
-    //     weight = router.Neighbours[connectorIPBytes]
-    // }
-    
-  
     
     if(!EOFerror){
         
@@ -355,7 +342,7 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             newTime ,_ := strconv.ParseInt(newGraph.Name, 10 ,64)
             oldTime, _ := strconv.ParseInt(graph.Name,10,64)
             if(newTime  > oldTime ) {
-                fmt.Println("Receiced newgraph .............................")
+                fmt.Println("Received newgraph .............................")
                 *graph = newGraph 
                 // propogate the graph throughout
                 sendGraph(graph, router)
@@ -363,15 +350,30 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
                 println("recieved older graph!")
             }
             
-        }else{
+        } else if(receivingData == connectorIPBytes[0]) {
+            // we are the client, we want to write this data to a file
+            // I am thinking length of dest field dest field 
+            // length of name field name field
+            // length of data field data field
+
+            sizeOfField := binary.LittleEndian.Uint32(connectorIPBytes[1:5]) // inclusive:exclusive
+            println("Size of dest is " + strconv.FormatInt(int64(sizeOfField), 10))
+            dest := connectorIPBytes[5:5+sizeOfField]
+            
+            fmt.Println(graph.Dijkstra(router.IP, string(dest)))
+            _, y := graph.Dijkstra(router.IP, string(dest))
+            conn, _ := net.Dial("tcp", y[0])
+
+            conn.Write(connectorIPBytes)
+            conn.Close()
+
+        } else {
             fmt.Println("UNEXPECTED CASE HAS HAPPENED ERROR : 325")
         }
     }
     
     conn.Close()
-    
-    
-    
+
 }
 
 
