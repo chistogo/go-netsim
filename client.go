@@ -397,7 +397,7 @@ func sendFiles(router *Router, graph *Graph) {
     for ip := range router.Neighbours {
         conn, err := net.Dial("tcp", ip)
         checkError(err)
-        sent, _ := fmt.Fprintf(conn, stringToSend)
+        fmt.Fprintf(conn, stringToSend)
     }
 }
 

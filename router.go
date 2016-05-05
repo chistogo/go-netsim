@@ -362,6 +362,7 @@ func handleListenForScan(conn net.Conn,router *Router,graph *Graph)  {
             
             fmt.Println(graph.Dijkstra(router.IP, string(dest)))
             _, y := graph.Dijkstra(router.IP, string(dest))
+            fmt.Println(string(dest))
             conn, _ := net.Dial("tcp", y[0])
 
             conn.Write(connectorIPBytes)
